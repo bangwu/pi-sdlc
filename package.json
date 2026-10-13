@@ -5,6 +5,14 @@
   "type": "module",
   "keywords": ["pi-package", "sdlc", "agent-skills"],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bangwu/pi-sdlc.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "engines": { "node": ">=22.19.0" },
   "files": ["extensions", "lib", "skills", "prompts", "templates", "docs", "README.md", "LICENSE"],
   "pi": {

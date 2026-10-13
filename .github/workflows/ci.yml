@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -92,10 +93,85 @@ jobs:
           console.log(`Verified ${result.filename}: ${paths.length} files`);
           NODE
 
-      - name: Upload package for inspection (no npm publication)
+      - name: Upload validated package
         uses: actions/upload-artifact@v4
         with:
           name: pi-sdlc-package
           path: pi-sdlc-*.tgz
           if-no-files-found: error
           retention-days: 14
+
+  publish:
+    name: Publish to npm (OIDC)
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [test, package]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    # Serialize releases; never cancel a publication already in progress.
+    concurrency:
+      group: npm-publish
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+          # No dependency cache or project dependency installation in this job.
+
+      - name: Ensure an OIDC-capable npm CLI
+        run: |
+          npm install --global npm@11 --ignore-scripts
+          npm --version
+
+      - name: Validate release tag and repository
+        id: release
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+        run: |
+          git merge-base --is-ancestor HEAD origin/main || {
+            echo "::error::Release tags must point to a commit on main."
+            exit 1
+          }
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { appendFileSync, readFileSync } from 'node:fs';
+
+          const manifest = JSON.parse(readFileSync('package.json', 'utf8'));
+          const tag = process.env.RELEASE_TAG;
+          assert.match(tag, /^v\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/,
+            'Use a version tag such as v0.1.0 or v0.2.0-beta.1');
+          assert.equal(tag, `v${manifest.version}`, 'Tag must match package.json version');
+          assert.equal(manifest.repository.url,
+            `git+https://github.com/${process.env.RELEASE_REPOSITORY}.git`,
+            'Package repository must match the publishing repository');
+          const distTag = manifest.version.includes('-') ? 'next' : 'latest';
+          appendFileSync(process.env.GITHUB_OUTPUT, `dist-tag=${distTag}\n`);
+          NODE
+
+      - name: Download the validated package from this run
+        uses: actions/download-artifact@v4
+        with:
+          name: pi-sdlc-package
+          path: release-package
+
+      - name: Publish validated tarball using trusted publishing
+        env:
+          NPM_DIST_TAG: ${{ steps.release.outputs.dist-tag }}
+        run: |
+          shopt -s nullglob
+          packages=(release-package/*.tgz)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one validated npm tarball."
+            exit 1
+          fi
+          npm publish "${packages[0]}" --access public --ignore-scripts \
+            --registry https://registry.npmjs.org --tag "$NPM_DIST_TAG"

@@ -149,6 +149,30 @@ npm test
 npm pack
 ```
 
-`npm pack` includes extensions/lib/skills/prompts/templates/docs. **It excludes the reference PDF, tests, node_modules and this project's local approval data.** The MIT license applies to the implementation, not the original PDF. Before publishing, adjust the npm name/version and confirm your organization's usage policies. `npm publish` has not been run.
+`npm pack` includes extensions/lib/skills/prompts/templates/docs. **It excludes the reference PDF, tests, node_modules and this project's local approval data.** The MIT license applies to the implementation, not the original PDF. Confirm your organization's usage policies before publishing. No registry publication has been performed as part of this implementation.
+
+### Automatic npm publication
+
+`.github/workflows/ci.yml` publishes through **npm Trusted Publishing (GitHub OIDC)** when a `v*` tag is pushed. No `NPM_TOKEN` secret is required. PRs, pushes to main and manual workflow runs perform checks only; they do not publish.
+
+One-time setup:
+
+1. Ensure that you own the `pi-sdlc` package on npm. If it does not yet exist, bootstrap the first version using an authenticated maintainer account (`npm login`, then `npm publish --access public` after local checks). This is a one-time setup step, not a token stored in CI. If the name is unavailable, choose a package name you own and update the manifest and installation examples first.
+2. Create the GitHub environment **`npm`** in `bangwu/pi-sdlc`. Restrict deployment tags to `v*`; optionally require reviewer approval. Protect release tags so only authorized maintainers can create them.
+3. In the npm package's Settings → Trusted publishing, add GitHub Actions with organization/user **`bangwu`**, repository **`pi-sdlc`**, workflow filename **`ci.yml`** (not its full path), and environment name **`npm`**. Explicitly allow direct **`npm publish`**, not just staged publishing. The values must match exactly. Complete the first trusted publication before the configuration expires; consult the [npm documentation](https://docs.npmjs.com/trusted-publishers/) for current requirements.
+4. Keep `package.json`'s `repository.url` aligned with the GitHub repository. The publish job installs npm 11, which supports OIDC, on a GitHub-hosted Node 24 runner.
+
+For a new release, start with a clean working tree containing committed changes:
+
+```bash
+# Bump the version and create its matching annotated tag, such as v0.1.1.
+npm version patch
+# Push the release commit and tag. The tag triggers publication after CI passes.
+git push origin main --follow-tags
+```
+
+Both Node 22.19 and 24 checks and the package-content checks must pass. The publish job verifies that the tag matches `package.json` and points to a commit on main, then downloads and publishes the exact validated tarball from the same workflow run. It does not rebuild the package or run its lifecycle scripts during publication. Stable versions use the `latest` dist-tag; prereleases such as `v0.2.0-beta.1` use `next`.
+
+Versions already published on npm cannot be overwritten. If a version was bootstrapped manually or already released, bump the version before pushing a new tag. Do not reuse release tags. OIDC automatically generates provenance for eligible public repositories/packages; it does not authenticate local development publishes.
 
 Reference: the user-supplied `AI Native SDLC Playbook_designv2.pdf`, Louis Claxton / Anthropic, 54 pages. See `docs/adoption.md` for the mapping and implementation scope.
