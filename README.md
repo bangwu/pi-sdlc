@@ -1,68 +1,68 @@
 # pi-sdlc
 
-把《AI Native SDLC Playbook》的产物驱动、人类治理、持续反馈闭环迁移到 **pi packages**。一个包在多个项目里复用：1 个 extension、6 个阶段 Skills、3 个快捷 prompts、7 个产物模板。
+Bring the artifact-driven workflows, human governance and continuous feedback loop of the *AI Native SDLC Playbook* to **pi packages**. Reuse one package across projects: 1 extension, 6 stage skills, 3 shortcut prompts and 7 artifact templates.
 
-当前版本是本地可用的 MVP，**尚未发布 npm**。它编排工作流、记录人工审批、检查产物依赖；不会替你配置监控、创建 GitHub PR、执行生产部署或启动后台 agent。
+The current version is a locally usable MVP, **not yet published to npm**. It orchestrates workflows, records human approvals and checks artifact dependencies. It does not configure monitoring, create GitHub PRs, deploy to production or start background agents.
 
-## 安装
+## Installation
 
-需要 Node.js ≥22.19、pi（开发验证版本 1.2.0）；Test/Deploy 审批还需要 Git。建议在目标仓库根目录运行。
+Requires Node.js ≥22.19 and pi (validated during development with version 1.2.0). Test/Deploy approvals also require Git. Run pi from the target repository root.
 
 ```bash
-# 在要使用 SDLC 能力的项目中执行；路径换成这个包的实际位置
+# Run in the target project; replace the path with this package's actual location.
 pi install /absolute/path/to/pi-sdlc
 pi
 ```
 
-只对当前项目安装：
+Install for the current project only:
 
 ```bash
 pi install --local /absolute/path/to/pi-sdlc
 ```
 
-项目资源需要先 review 并授予 project trust。包由 pi 动态加载 TypeScript，无需构建。安装后在已有 pi 会话中执行 `/reload`。
+Review project resources before granting project trust. Pi loads the package's TypeScript dynamically; no build is required. Run `/reload` in an existing pi session after installation.
 
-临时体验，不修改安装设置：
+Try the package without changing installation settings:
 
 ```bash
 pi -e /absolute/path/to/pi-sdlc
 ```
 
-## 完整工作流
+## Complete workflow
 
-在 pi 对话框中逐步执行。每次 `run` 后先完成产物、查看内容和真实证据，再由对应的人执行 `approve`；不要一口气复制所有命令。
+Run these commands step by step in pi. After each `run`, complete the artifacts and review their content and actual evidence before the accountable person executes `approve`. Do not paste the entire sequence at once.
 
 ```text
-/sdlc init claims-status 客户自助查看理赔状态
+/sdlc init claims-status Customer self-service claim status
 /sdlc run plan
-/sdlc approve plan 产品负责人
+/sdlc approve plan Product Owner
 /sdlc run design
-/sdlc approve design 产品负责人
+/sdlc approve design Product Owner
 /sdlc run build
-/sdlc approve build 技术负责人
+/sdlc approve build Technical Lead
 /sdlc run implement
 /sdlc run test
-/sdlc approve test 代码负责人
+/sdlc approve test Code Owner
 /sdlc run deploy
-/sdlc approve deploy 发布负责人
+/sdlc approve deploy Release Manager
 /sdlc run maintain
 ```
 
-- **Plan** → `intent.md`：问题、结果、用户、约束和待决问题。
-- **Design** → `spec.md`：需求与设计合并，显式标记政策冲突和风险。
-- **Build** → `plan.md`：只探索与规划；列出文件、步骤、风险和证明。
-- **Implement**：Build 的执行子步骤，不是第七个 SDLC 阶段；只在计划批准后修改代码。
-- **Test** → `verification.md`：真实命令、退出码、日志、验收覆盖和剩余风险。
-- **Deploy** → `review.md` + `release.md`：三轮审查、发布准备和回滚证据，**不执行部署**。
-- **Maintain** → `incident.md`：读取外部观测，诊断、归档、提出新的 intent 与永久回归 eval。
+- **Plan** → `intent.md`: problem, outcome, users, constraints and open questions.
+- **Design** → `spec.md`: requirements and design together, with explicit policy conflicts and risks.
+- **Build** → `plan.md`: exploration and planning only; list files, steps, risks and proof.
+- **Implement**: the execution step within Build, not a seventh SDLC stage; modify code only after plan approval.
+- **Test** → `verification.md`: actual commands, exit codes, logs, acceptance coverage and residual risk.
+- **Deploy** → `review.md` + `release.md`: three review passes, release preparation and rollback evidence; **does not perform deployment**.
+- **Maintain** → `incident.md`: read external observations, diagnose and document incidents, and propose new intent and permanent regression evals.
 
-模板包含 `<!-- sdlc:draft -->`。内容完成后移除，仍留有标记的产物无法批准。标记检查不是内容质量评估；审核人必须检查 TODO、证据、风险和验收结果。
+Templates contain `<!-- sdlc:draft -->`. Remove it after completing the content; artifacts with this marker cannot be approved. The marker check is not a content-quality assessment. Reviewers must still check TODOs, evidence, risks and acceptance results.
 
-探索大仓库时可用 `pi --tools +grep,+find,+ls` 启用额外只读工具（默认只有 read/bash/edit/write）。
+For larger repositories, enable additional read-only tools with `pi --tools +grep,+find,+ls` (the defaults are read/bash/edit/write).
 
-生产发布由外部受保护环境/发布平台执行，完成后再使用 Maintain 记录真实监控或事件证据。全新的告警可直接 `/sdlc init <new-id> <title>` → Plan，以告警为输入，不必伪造先前的 Deploy 批准。
+Production releases run through an external protected environment or deployment platform. After deployment, use Maintain to record actual monitoring or incident evidence. For a new alert, start directly with `/sdlc init <new-id> <title>` → Plan, using the alert as input; do not fabricate a prior Deploy approval.
 
-## 状态和跨会话
+## State and cross-session use
 
 ```text
 /sdlc status
@@ -72,52 +72,52 @@ pi -e /absolute/path/to/pi-sdlc
 /sdlc off
 ```
 
-- 产物：`intent/<id>/`。
-- 人工审批、内容 SHA-256、历史：`.sdlc/changes/<id>.json`。
-- 活跃 change/phase：pi session branch 的 custom entry，随分支恢复；新会话用 `use` 选择。
-- 多个 change 可共存。并行实现请使用独立 Git worktree；一个工作树里的 Test/Deploy 指纹包含所有 Git 跟踪和未忽略文件，因此其他并行修改也会使审批过期。
-- 上游产物改变会让下游审批失效。Test/Deploy 还绑定源文件内容、文件名、删除状态和 mode，包括未跟踪但未忽略的文件；排除 `intent/`、`.sdlc/`，不覆盖 Git 忽略文件、外部服务状态或模型配置。源码符号链接暂不支持这两个审批阶段。
-- 一个锁串行化跨进程 init/approve 写入，原子替换状态文件；锁冲突会报错而不是覆盖。异常退出留下锁时，确认所有使用它的进程已停止后再清理 `.sdlc/mutation.lock/`。
-- 建议把产物、审批状态和代码一起交给 Git/PR review。包不会自动 commit/push；本地审批不是 git 提交，也不是不可篡改的审计库。
+- Artifacts: `intent/<id>/`.
+- Human approvals, content SHA-256 hashes and history: `.sdlc/changes/<id>.json`.
+- Active change/phase: a custom entry on the pi session branch, restored with that branch. Use `use` to select a change in a new session.
+- Multiple changes can coexist. Use separate Git worktrees for parallel implementation. Test/Deploy fingerprints include all Git-tracked and non-ignored files in a worktree, so other concurrent changes also invalidate approvals.
+- Changes to upstream artifacts invalidate downstream approvals. Test/Deploy also bind source content, filenames, deletion state and file modes, including untracked but non-ignored files. They exclude `intent/` and `.sdlc/` and do not cover Git-ignored files, external service state or model configuration. Source symlinks are not currently supported for these two approval stages.
+- A lock serializes cross-process init/approve writes, and state files are replaced atomically. Lock conflicts report an error rather than overwrite data. If an interrupted process leaves a lock behind, confirm that all processes using it have stopped before removing `.sdlc/mutation.lock/`.
+- Review artifacts, approval state and code together through Git/PR review. The package never commits or pushes automatically. Local approval is neither a Git commit nor a tamper-proof audit store.
 
-## 工具护栏
+## Tool guardrails
 
-仅在 `/sdlc init/use/run` 激活的会话内生效：
+These apply only in a session activated through `/sdlc init/use/run`:
 
-- Plan/Design/Build/Deploy/Maintain：允许 `read/grep/find/ls`、`sdlc_status` 和当前阶段的指定产物写入；阻止 shell、源码编辑和未知/MCP 工具。
-- Implement/Test：检查有效前置审批后允许源码编辑和本地 shell；阻止直接 `.sdlc`/`.git` 文件编辑及明显的 deploy/rollback、基础设施操作、Git 发布命令。
-- 已批准产物需回到其编写阶段修改，并重新批准。Test 只可写自己的 `verification.md`，不能直接改 plan/spec。
-- 模型只有只读 `sdlc_status` 工具，没有 approve 工具。人工 `approve` 需要交互/RPC 确认；headless 模式拒绝批准。确认期间内容变化会拒绝写入审批。
+- Plan/Design/Build/Deploy/Maintain: allow `read/grep/find/ls`, `sdlc_status` and writes to the current stage's designated artifacts; block shell execution, source edits and unknown/MCP tools.
+- Implement/Test: allow source edits and local shell commands after checking valid prerequisite approvals; block direct `.sdlc`/`.git` file edits and obvious deploy/rollback, infrastructure and Git publication commands.
+- To change an approved artifact, return to its authoring stage and obtain renewed approval. Test can write its own `verification.md`, but cannot directly modify plan/spec artifacts.
+- The model has only the read-only `sdlc_status` tool, not an approval tool. Human `approve` requires interactive/RPC confirmation; headless mode rejects approval. Changes during confirmation prevent the approval from being recorded.
 
-**这是协作护栏，不是安全沙箱。** shell 包装、别名、自定义工具或 `/sdlc off` 可以绕过本地约束；本地 reviewer 名字不验证身份；状态文件可被操作系统用户改写。强制控制必须放在 OS/container 隔离、短期凭据、网络策略、分支保护、CODEOWNERS 和 protected environments。工具白名单不会让 shell 自动变成只读，也不自动冻结测试文件。
+**These are collaboration guardrails, not a security sandbox.** Shell wrappers, aliases, custom tools or `/sdlc off` can bypass local constraints. Local reviewer names do not authenticate identity, and operating-system users can rewrite state files. Enforce mandatory controls through OS/container isolation, short-lived credentials, network policy, branch protection, CODEOWNERS and protected environments. A tool allowlist does not make shell commands read-only or automatically freeze test files.
 
-需要 MCP/browser、远程 PR diff 或严格测试冻结时，应由团队配置独立、受控的集成和外部检查；当前安全默认不会静默开放这些能力。
+Teams requiring MCP/browser access, remote PR diffs or strict test-file protection should configure separate controlled integrations and external checks. The current safe defaults do not silently enable these capabilities.
 
-## 单独复用 Skills 和 prompts
+## Reuse skills and prompts independently
 
 ```text
-/skill:sdlc-plan 一个新的产品想法
-/skill:sdlc-design 根据已有 intent 编写 spec
-/skill:sdlc-build 为这个需求写实现计划
-/skill:sdlc-test 检查验收覆盖
-/skill:sdlc-deploy 审查这份 diff 并准备发布材料
-/skill:sdlc-maintain 分析这份告警证据
-/sdlc-capture 客户看不到订单状态
-/sdlc-review 本次变更的鉴权与风险
-/sdlc-context 测试命令和常见错误
+/skill:sdlc-plan A new product idea
+/skill:sdlc-design Write a spec from the existing intent
+/skill:sdlc-build Write an implementation plan for this requirement
+/skill:sdlc-test Check acceptance coverage
+/skill:sdlc-deploy Review this diff and prepare release documentation
+/skill:sdlc-maintain Analyze this alert evidence
+/sdlc-capture Customers cannot see their order status
+/sdlc-review Authentication and risk in this change
+/sdlc-context Test commands and recurring mistakes
 ```
 
-独立 Skill/Prompt 是建议性指令，**不会激活 extension 的审批/护栏**。通用流程使用 `/sdlc`；局部场景直接加载 Skill。
+Standalone skills/prompts are advisory instructions. **They do not activate the extension's approvals or guardrails.** Use `/sdlc` for the complete workflow; load individual skills for focused tasks.
 
-## 团队定制
+## Team customization
 
-1. 在目标仓库维护短而准确的 `AGENTS.md`：命令与健康输出、架构、约定、冻结路径、反复出现的错误。
-2. 用 `REVIEW.md` 定义 Bugs/Security/Compliance、Important/Nit、例外和数量上限。
-3. 在项目 `.pi/skills/` 编写有 owner、来源和版本的安全/合规/品牌/UX Skills。强制政策还要配独立 CI/平台检查。
-4. 每个产物声明唯一 source of truth；若 Jira/ServiceNow 为权威记录，Markdown 是工作副本，双向链接 record ID/commit SHA。MCP 同步需单独授权。
-5. 建立真实任务 agent eval 集合，在 Skills、AGENTS.md、prompt、extension 或模型变更时回归，并将事故变成永久 eval。参见 `docs/adoption.md`。
+1. Maintain a short, accurate `AGENTS.md` in the target repository: commands and healthy output, architecture, conventions, frozen paths and recurring mistakes.
+2. Define Bugs/Security/Compliance review passes, Important/Nit criteria, exclusions and volume limits in `REVIEW.md`.
+3. Write security/compliance/brand/UX skills in the project's `.pi/skills/`, with owners, sources and versions. Mandatory policies also require independent CI/platform checks.
+4. Declare one source of truth for each artifact. If Jira/ServiceNow is authoritative, Markdown is a working copy; link record IDs and commit SHAs in both directions. MCP synchronization needs separate authorization.
+5. Build agent evals from real tasks, run regressions when skills, AGENTS.md, prompts, extensions or models change, and turn incidents into permanent evals. See `docs/adoption.md`.
 
-## 开发和分发
+## Development and distribution
 
 ```bash
 npm ci --ignore-scripts
@@ -126,6 +126,6 @@ npm test
 npm pack
 ```
 
-`npm pack` 包含 extension/lib/Skills/prompts/templates/docs，**不包含参考 PDF、测试、node_modules 或本项目的本地审批数据**。MIT 只适用于实现，不适用于原 PDF。发布前调整 npm 名称/版本并确认组织使用政策；尚未执行 `npm publish`。
+`npm pack` includes extensions/lib/skills/prompts/templates/docs. **It excludes the reference PDF, tests, node_modules and this project's local approval data.** The MIT license applies to the implementation, not the original PDF. Before publishing, adjust the npm name/version and confirm your organization's usage policies. `npm publish` has not been run.
 
-参考原文：用户提供的 `AI Native SDLC Playbook_designv2.pdf`，Louis Claxton / Anthropic，54 页。映射与落地范围见 `docs/adoption.md`。
+Reference: the user-supplied `AI Native SDLC Playbook_designv2.pdf`, Louis Claxton / Anthropic, 54 pages. See `docs/adoption.md` for the mapping and implementation scope.
