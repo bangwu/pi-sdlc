@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Tests use local fixtures and pi's resource loader, not model API calls.
+env:
+  PI_OFFLINE: "1"
+  PI_TELEMETRY: "0"
+
+jobs:
+  test:
+    name: Check and test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # Exercise the minimum supported version and the development version.
+        node: ["22.19.0", "24"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Typecheck
+        run: npm run check
+      - name: Test workflow, gates and real pi resource discovery
+        run: npm test
+
+  package:
+    name: Verify distributable pi package
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+      # The prerequisite job already ran check/test. Skipping prepack avoids
+      # repeating them and keeps stdout valid JSON for the manifest check.
+      - name: Pack and validate published files
+        run: |
+          npm pack --ignore-scripts --json > pack-result.json
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+
+          const [result] = JSON.parse(readFileSync('pack-result.json', 'utf8'));
+          const paths = result.files.map(({ path }) => path);
+          const manifest = JSON.parse(readFileSync('package.json', 'utf8'));
+          const required = [
+            'package.json', 'README.md', 'LICENSE', 'docs/adoption.md',
+            'extensions/sdlc.ts', 'lib/workflow.mjs', 'skills/CONTRACT.md',
+            ...['plan', 'design', 'build', 'test', 'deploy', 'maintain']
+              .map(phase => `skills/sdlc-${phase}/SKILL.md`),
+            ...['capture', 'review', 'context'].map(name => `prompts/sdlc-${name}.md`),
+            ...['intent', 'spec', 'plan', 'verification', 'review', 'release', 'incident']
+              .map(name => `templates/${name}.md`),
+          ];
+          for (const path of required) {
+            assert.ok(paths.includes(path), `Required package resource missing: ${path}`);
+          }
+          for (const path of paths) {
+            assert.ok(!/\.pdf$|\.tgz$|^(?:node_modules|tests|\.sdlc|\.git|\.github)\//i.test(path),
+              `Private or development-only file in package: ${path}`);
+          }
+          assert.ok(manifest.keywords.includes('pi-package'));
+          assert.deepEqual(manifest.pi.extensions, ['./extensions/sdlc.ts']);
+          assert.deepEqual(manifest.pi.skills, ['./skills']);
+          assert.deepEqual(manifest.pi.prompts, ['./prompts/*.md']);
+          console.log(`Verified ${result.filename}: ${paths.length} files`);
+          NODE
+
+      - name: Upload package for inspection (no npm publication)
+        uses: actions/upload-artifact@v4
+        with:
+          name: pi-sdlc-package
+          path: pi-sdlc-*.tgz
+          if-no-files-found: error
+          retention-days: 14
