@@ -8,21 +8,44 @@ The current version is a locally usable MVP, **not yet published to npm**. It or
 
 Requires Node.js ≥22.19 and pi (validated during development with version 1.2.0). Test/Deploy approvals also require Git. Run pi from the target repository root.
 
+Install from npm using Pi's package source syntax:
+
 ```bash
-# Run in the target project; replace the path with this package's actual location.
-pi install /absolute/path/to/pi-sdlc
+pi install npm:pi-sdlc
 pi
 ```
+
+**The package has not yet been published to npm.** These npm commands become available after publication; use the local development installation below until then.
 
 Install for the current project only:
 
 ```bash
-pi install --local /absolute/path/to/pi-sdlc
+pi install --local npm:pi-sdlc
+```
+
+Pin a published version for reproducible installation:
+
+```bash
+pi install npm:pi-sdlc@0.1.0
 ```
 
 Review project resources before granting project trust. Pi loads the package's TypeScript dynamically; no build is required. Run `/reload` in an existing pi session after installation.
 
-Try the package without changing installation settings:
+Try a published package without changing installation settings:
+
+```bash
+pi -e npm:pi-sdlc
+```
+
+### Local development installation
+
+Before npm publication, or when testing local changes, use the package's absolute path:
+
+```bash
+pi install /absolute/path/to/pi-sdlc
+```
+
+For a temporary local session:
 
 ```bash
 pi -e /absolute/path/to/pi-sdlc
