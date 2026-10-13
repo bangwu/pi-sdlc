@@ -1,0 +1,30 @@
+{
+  "name": "pi-sdlc",
+  "version": "0.1.0",
+  "description": "Artifact-first AI-native SDLC workflows, human gates and reusable skills for pi",
+  "type": "module",
+  "keywords": ["pi-package", "sdlc", "agent-skills"],
+  "license": "MIT",
+  "engines": { "node": ">=22.19.0" },
+  "files": ["extensions", "lib", "skills", "prompts", "templates", "docs", "README.md", "LICENSE"],
+  "pi": {
+    "extensions": ["./extensions/sdlc.ts"],
+    "skills": ["./skills"],
+    "prompts": ["./prompts/*.md"]
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "tsc --noEmit",
+    "prepack": "npm run check && npm test"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^1.2.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0",
+    "typebox": "^1.0.0"
+  }
+}
